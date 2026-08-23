@@ -1,8 +1,8 @@
 'use client';
 
+import type { Session } from '@/lib/session';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import type { Session } from '@/lib/session';
 
 export default function Navbar() {
   const [session, setSession] = useState<Session | null>(null);
@@ -27,7 +27,10 @@ export default function Navbar() {
           Fix<span className="text-brand-600">Match</span>
         </Link>
         <nav className="flex items-center gap-4 text-sm">
-          {session?.role === 'technician' && (
+  <Link href="/feed" className="text-slate-600 hover:text-slate-900">
+    Feed
+  </Link>
+  {session?.role === 'technician' && (
             <Link href="/technician/dashboard" className="text-slate-600 hover:text-slate-900">
               Dashboard
             </Link>

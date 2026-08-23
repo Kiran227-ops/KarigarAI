@@ -44,7 +44,7 @@ export default async function FeedPage() {
                 createdAt: p.createdAt,
                 technician: {
                   id: p.technicianId,
-                  name: profile?.name ?? p.technicianName ?? 'Unknown Technician',
+                  name: profile?.name ?? p.technicianName,
                   location: profile?.location ?? p.location,
                   rating: profile?.rating,
                 },
