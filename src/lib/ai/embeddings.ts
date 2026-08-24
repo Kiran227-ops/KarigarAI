@@ -1,26 +1,39 @@
-export const EMBEDDING_MODEL = 'nomic-embed-text';
+import { InferenceClient } from '@huggingface/inference';
 
-export async function embedText(text: string): Promise<number[]> {
-  const response = await fetch('http://localhost:11434/api/embeddings', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: EMBEDDING_MODEL,
-      prompt: text,
-    }),
+const token = process.env.HF_TOKEN;
+
+if (!token) {
+  throw new Error('HF_TOKEN is missing from environment variables');
+}
+
+const hf = new InferenceClient(token);
+
+// Hugging Face embedding model
+export const EMBEDDING_MODEL =
+  'sentence-transformers/all-MiniLM-L6-v2';
+
+export async function embedText(
+  text: string
+): Promise<number[]> {
+  if (!text || !text.trim()) {
+    throw new Error('Cannot create embedding for empty text');
+  }
+
+  const result = await hf.featureExtraction({
+    model: EMBEDDING_MODEL,
+    inputs: text,
   });
 
-  if (!response.ok) {
-    throw new Error(`Ollama embedding error: ${response.status}`);
+  // Hugging Face can return a nested array
+  if (Array.isArray(result)) {
+    const first = result[0];
+
+    if (Array.isArray(first)) {
+      return first.map(Number);
+    }
+
+    return result.map(Number);
   }
 
-  const data = await response.json();
-
-  if (!Array.isArray(data.embedding)) {
-    throw new Error('Ollama returned an invalid embedding');
-  }
-
-  return data.embedding;
+  throw new Error('Invalid embedding returned by Hugging Face');
 }
