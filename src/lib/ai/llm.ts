@@ -67,8 +67,6 @@ ${rawText}
     return result || rawText;
   } catch (error) {
     console.error('Translation error:', error);
-
-    // If AI translation fails, continue with original text.
     return rawText;
   }
 }
@@ -79,7 +77,6 @@ ${rawText}
 export async function understandProblem(
   rawText: string
 ): Promise<ProblemUnderstanding> {
-
   const prompt = `
 You are an AI assistant for a technician discovery application.
 
@@ -120,11 +117,11 @@ Important rules:
 - Do not invent technical problems.
 - Keep symptoms short.
 - The problem should be a clean one-sentence description.
-- device can be empty if there is no device.
-- symptoms can be an empty array if there are no symptoms.
+- Device can be empty if there is no device.
+- Symptoms can be an empty array if there are no symptoms.
 - Return ONLY JSON.
 - Do NOT use markdown.
-- Do NOT wrap JSON in ```.
+- Do NOT wrap the JSON in markdown code blocks.
 
 Customer problem:
 ${rawText}
@@ -135,7 +132,6 @@ ${rawText}
 
     console.log('AI raw response:', content);
 
-    // Remove accidental markdown fences.
     const cleaned = content
       .replace(/```json/gi, '')
       .replace(/```/g, '')
@@ -167,11 +163,9 @@ ${rawText}
           ? parsed.category
           : '',
     };
-
   } catch (error) {
     console.error('Problem understanding error:', error);
 
-    // Don't break the whole search if AI fails.
     return {
       problem: rawText,
       device: '',
