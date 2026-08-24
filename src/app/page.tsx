@@ -1,31 +1,140 @@
+'use client';
+
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import SearchBar from '@/components/SearchBar';
-import Link from 'next/link';
+import ResultCard from '@/components/ResultCard';
 
-export default function HomePage() {
+interface SearchResponse {
+  understanding: {
+    problem: string;
+    device: string;
+    symptoms: string[];
+    category: string;
+  };
+  results: any[];
+}
+
+function SearchResultsContent() {
+  const searchParams = useSearchParams();
+  const q = searchParams.get('q') || '';
+
+  const [data, setData] = useState<SearchResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!q) {
+      setData(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    fetch('/api/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        problem: q,
+      }),
+    })
+      .then(async (res) => {
+        const body = await res.json();
+
+        if (!res.ok) {
+          throw new Error(body.error || 'Search failed');
+        }
+
+        setData(body);
+      })
+      .catch((err) => {
+        console.error(err);
+        setError(err.message || 'Search failed');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [q]);
+
   return (
-    <div className="flex flex-col items-center text-center gap-6 py-12">
-      <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 max-w-2xl">
-        People know what's wrong.
-        <br />
-        They don't always know who can fix it.
-      </h1>
-      <p className="text-slate-600 max-w-xl">
-        Describe your problem in your own words. We'll match you with technicians who have
-        solved similar problems before — based on their real write-ups, not a category dropdown.
-      </p>
+    <div className="flex flex-col gap-6">
+      {/* Search Bar */}
+      <SearchBar initialValue={q} />
 
-      <div className="w-full max-w-2xl">
-        <SearchBar />
-      </div>
+      {/* Loading */}
+      {loading && (
+        <p className="text-slate-500 text-sm">
+          Understanding your problem and searching…
+        </p>
+      )}
 
-      <p className="text-xs text-slate-400 max-w-md">
-        These technicians have demonstrated experience solving similar problems — this isn't a
-        guarantee of diagnosis or repair.
-      </p>
+      {/* Error */}
+      {error && (
+        <p className="text-red-600 text-sm">
+          {error}
+        </p>
+      )}
 
-      <Link href="/feed" className="text-sm text-brand-600 hover:underline">
-        Or browse everything technicians have posted →
-      </Link>
+      {/* Results */}
+      {data && (
+        <>
+          {/* Understanding */}
+          <div className="text-sm text-slate-500">
+            <span>Understood as: </span>
+
+            <span className="text-slate-700 font-medium">
+              {data.understanding.category || 'General maintenance'}
+            </span>
+
+            {data.understanding.symptoms.length > 0 && (
+              <>
+                {' — '}
+                {data.understanding.symptoms.join(', ')}
+              </>
+            )}
+          </div>
+
+          {/* Heading */}
+          <h2 className="font-semibold text-slate-900">
+            People who solved similar problems
+          </h2>
+
+          {/* No Results */}
+          {data.results.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              No matching technician experiences yet.
+              Try a different description, or check back once
+              more technicians have posted.
+            </p>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-4">
+              {data.results.map((result, index) => (
+                <ResultCard
+                  key={result._id || result.id || index}
+                  result={result}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
+  );
+}
+
+export default function SearchResultsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="text-sm text-slate-500">
+          Loading search...
+        </div>
+      }
+    >
+      <SearchResultsContent />
+    </Suspense>
   );
 }

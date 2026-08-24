@@ -1,147 +1,286 @@
 import { NextRequest, NextResponse } from 'next/server';
+
 import { connectDB } from '@/lib/db';
 import Post from '@/lib/models/Post';
 import TechnicianProfile from '@/lib/models/TechnicianProfile';
-import { understandProblem, buildSearchText } from '@/lib/ai/llm';
+
+import {
+  translateToEnglish,
+  understandProblem,
+  buildSearchText,
+} from '@/lib/ai/llm';
+
 import { embedText } from '@/lib/ai/embeddings';
 import { queryTopMatches } from '@/lib/ai/vectorstore';
 
-// Problem -> AI understanding -> embedding -> semantic search -> top matches.
 export async function POST(req: NextRequest) {
-  const { problem } = await req.json();
+  try {
+    const { problem } = await req.json();
 
-  if (
-    !problem ||
-    typeof problem !== 'string' ||
-    problem.trim().length < 5
-  ) {
-    return NextResponse.json(
-      { error: 'Describe your problem in a bit more detail' },
-      { status: 400 }
-    );
-  }
-
-  await connectDB();
-
-  // 1. Understand the customer's problem
-  const understanding = await understandProblem(problem);
-  const searchText = buildSearchText(understanding);
-
-  // 2. Create embedding
-  const embedding = await embedText(searchText);
-
-  // 3. Semantic search
-  const matches = await queryTopMatches(embedding, 3);
-
-  if (matches.length === 0) {
-    return NextResponse.json({
-      understanding,
-      results: [],
-    });
-  }
-
-  // 4. Get matching posts from MongoDB
-  const posts = await Post.find(
-    {
-      _id: {
-        $in: matches.map((m) => m.postId),
-      },
-    },
-    {
-      embedding: 0,
+    // Validate input
+    if (
+      !problem ||
+      typeof problem !== 'string' ||
+      problem.trim().length < 5
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Describe your problem in a bit more detail',
+        },
+        { status: 400 }
+      );
     }
-  ).lean();
 
-  const postById = new Map(
-    posts.map((p: any) => [String(p._id), p])
-  );
+    await connectDB();
 
-  // 5. Get technician profiles
-  const technicianIds = [
-    ...new Set(posts.map((p: any) => p.technicianId)),
-  ];
+    const originalProblem = problem.trim();
 
-  const profiles = await TechnicianProfile.find({
-    userId: {
-      $in: technicianIds,
-    },
-  }).lean();
+    // =====================================================
+    // 1. Translate customer language to English
+    // =====================================================
 
-  const profileByUserId = new Map(
-    profiles.map((p: any) => [p.userId, p])
-  );
+    const translatedProblem =
+      await translateToEnglish(originalProblem);
 
-  const relevanceLabels = [
-    'Best match',
-    'Also relevant',
-    'Also relevant',
-  ];
+    console.log(
+      'Original problem:',
+      originalProblem
+    );
 
-  // 6. Build search results
-  const results = matches
-    .map((m, i) => {
-      const post = postById.get(m.postId);
+    console.log(
+      'Translated problem:',
+      translatedProblem
+    );
 
-      if (!post) return null;
+    // =====================================================
+    // 2. Understand the translated problem
+    // =====================================================
 
-      const technician = profileByUserId.get(
-        post.technicianId
+    const understanding =
+      await understandProblem(translatedProblem);
+
+    console.log(
+      'AI understanding:',
+      understanding
+    );
+
+    // =====================================================
+    // 3. Build search text
+    // =====================================================
+
+    const searchText =
+      buildSearchText(understanding);
+
+    console.log(
+      'Search text:',
+      searchText
+    );
+
+    // =====================================================
+    // 4. Generate embedding
+    // =====================================================
+
+    const embedding =
+      await embedText(searchText);
+
+    // =====================================================
+    // 5. Semantic search
+    // =====================================================
+
+    const matches =
+      await queryTopMatches(
+        embedding,
+        3
       );
 
-      return {
-        score: m.score,
+    // =====================================================
+    // No matching posts
+    // =====================================================
 
-        relevanceLabel:
-          relevanceLabels[i] ?? 'Also relevant',
+    if (matches.length === 0) {
+      return NextResponse.json({
+        originalProblem,
+        translatedProblem,
+        understanding,
+        results: [],
+      });
+    }
 
-        // POST DATA
-        post: {
-          id: String(post._id),
+    // =====================================================
+    // 6. Get posts from MongoDB
+    // =====================================================
 
-          content: post.content,
-
-          category: post.category,
-
-          createdAt: post.createdAt,
-
-          // ⭐ IMPORTANT: SEND IMAGE
-          image: post.image ?? null,
+    const posts = await Post.find(
+      {
+        _id: {
+          $in: matches.map(
+            (m) => m.postId
+          ),
         },
+      },
+      {
+        embedding: 0,
+      }
+    ).lean();
 
-        // TECHNICIAN DATA
-        technician: technician
-          ? {
-              id: technician.userId,
+    const postById = new Map(
+      posts.map((p: any) => [
+        String(p._id),
+        p,
+      ])
+    );
 
-              name: technician.name,
+    // =====================================================
+    // 7. Get technician profiles
+    // =====================================================
 
-              category: technician.category,
+    const technicianIds = [
+      ...new Set(
+        posts.map(
+          (p: any) => p.technicianId
+        )
+      ),
+    ];
 
-              location: technician.location,
+    const profiles =
+      await TechnicianProfile.find({
+        userId: {
+          $in: technicianIds,
+        },
+      }).lean();
 
-              skills: technician.skills,
+    const profileByUserId =
+      new Map(
+        profiles.map((p: any) => [
+          p.userId,
+          p,
+        ])
+      );
 
-              rating: technician.rating,
-            }
-          : {
-              id: post.technicianId,
+    // =====================================================
+    // 8. Build results
+    // =====================================================
 
-              name: post.technicianName,
+    const relevanceLabels = [
+      'Best match',
+      'Also relevant',
+      'Also relevant',
+    ];
 
-              category: post.category,
+    const results = matches
+      .map((m, i) => {
+        const post =
+          postById.get(m.postId);
 
-              location: post.location,
+        if (!post) {
+          return null;
+        }
 
-              skills: post.skills,
+        const technician =
+          profileByUserId.get(
+            post.technicianId
+          );
 
-              rating: undefined,
-            },
-      };
-    })
-    .filter(Boolean);
+        return {
+          score: m.score,
 
-  return NextResponse.json({
-    understanding,
-    results,
-  });
+          relevanceLabel:
+            relevanceLabels[i] ??
+            'Also relevant',
+
+          post: {
+            id: String(post._id),
+
+            content:
+              post.content,
+
+            category:
+              post.category,
+
+            createdAt:
+              post.createdAt,
+
+            // Send image to frontend
+            image:
+              post.image ?? null,
+          },
+
+          technician: technician
+            ? {
+                id:
+                  technician.userId,
+
+                name:
+                  technician.name,
+
+                category:
+                  technician.category,
+
+                location:
+                  technician.location,
+
+                skills:
+                  technician.skills,
+
+                rating:
+                  technician.rating,
+              }
+            : {
+                id:
+                  post.technicianId,
+
+                name:
+                  post.technicianName,
+
+                category:
+                  post.category,
+
+                location:
+                  post.location,
+
+                skills:
+                  post.skills,
+
+                rating:
+                  undefined,
+              },
+        };
+      })
+      .filter(
+        (
+          result
+        ): result is NonNullable<
+          typeof result
+        > => result !== null
+      );
+
+    // =====================================================
+    // 9. Return response
+    // =====================================================
+
+    return NextResponse.json({
+      originalProblem,
+      translatedProblem,
+      understanding,
+      results,
+    });
+  } catch (error) {
+    console.error(
+      'POST /api/search error:',
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Search failed',
+      },
+      {
+        status: 500,
+      }
+    );
+  }
 }
