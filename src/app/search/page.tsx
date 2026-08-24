@@ -51,6 +51,7 @@ function SearchResultsContent() {
         setData(body);
       })
       .catch((err) => {
+        console.error(err);
         setError(err.message || 'Search failed');
       })
       .finally(() => {
@@ -77,14 +78,16 @@ function SearchResultsContent() {
       {data && (
         <>
           <div className="text-sm text-slate-500">
-            Understood as:{' '}
-            <span className="text-slate-700">
-              {data.understanding.category}
+            <span>Understood as: </span>
+
+            <span className="text-slate-700 font-medium">
+              {data.understanding.category || 'General maintenance'}
             </span>
 
             {data.understanding.symptoms.length > 0 && (
               <>
-                {' '}— {data.understanding.symptoms.join(', ')}
+                {' — '}
+                {data.understanding.symptoms.join(', ')}
               </>
             )}
           </div>
@@ -95,16 +98,14 @@ function SearchResultsContent() {
 
           {data.results.length === 0 ? (
             <p className="text-sm text-slate-500">
-              No matching technician experiences yet. Try a
-              different description, or check back once more
-              technicians have posted.
+              No matching technician experiences yet. Try a different description, or check back once more technicians have posted.
             </p>
           ) : (
             <div className="grid sm:grid-cols-2 gap-4">
-              {data.results.map((r, i) => (
+              {data.results.map((result, index) => (
                 <ResultCard
-                  key={r.post?.id ?? i}
-                  result={r}
+                  key={result._id || result.id || index}
+                  result={result}
                 />
               ))}
             </div>
@@ -115,19 +116,15 @@ function SearchResultsContent() {
   );
 }
 
-function SearchLoading() {
-  return (
-    <div className="flex flex-col gap-6">
-      <p className="text-sm text-slate-500">
-        Loading search...
-      </p>
-    </div>
-  );
-}
-
 export default function SearchResultsPage() {
   return (
-    <Suspense fallback={<SearchLoading />}>
+    <Suspense
+      fallback={
+        <div className="text-sm text-slate-500">
+          Loading search...
+        </div>
+      }
+    >
       <SearchResultsContent />
     </Suspense>
   );
