@@ -6,6 +6,7 @@ interface FeedPost {
   image?: string | null;
   category: string;
   createdAt: string;
+  solvedCount?: number;
   technician: {
     id: string;
     name: string;
@@ -43,67 +44,71 @@ export default function FeedPostCard({
 }) {
   const technicianName =
     post.technician.name || 'Unknown Technician';
+  const categoryLabel = post.category || 'General Service';
 
   return (
-    <div className="card p-5 flex flex-col gap-3">
-
-      {/* Technician Header */}
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
-
         <Link
           href={`/technician/${post.technician.id}`}
-          className="flex items-center gap-3 group"
+          className="flex items-center gap-3 group min-w-0"
         >
-          {/* Profile Initial */}
-          <div className="h-10 w-10 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center font-semibold">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-base font-semibold text-sky-700">
             {technicianName.charAt(0).toUpperCase()}
           </div>
 
-          {/* Technician Info */}
-          <div>
-            <div className="font-semibold text-slate-900 group-hover:underline">
+          <div className="min-w-0">
+            <div className="truncate text-lg font-semibold text-slate-900 group-hover:underline">
               {technicianName}
             </div>
 
-            <div className="text-xs text-slate-500">
-              {post.category}
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 font-medium text-sky-700">
+                {categoryLabel}
+              </span>
 
-              {post.technician.location
-                ? ` · 📍 ${post.technician.location}`
-                : ''}
+              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
+                ✅ {post.solvedCount ?? 0} solved
+              </span>
+
+              {post.technician.location && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span>📍</span>
+                    <span>{post.technician.location}</span>
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </Link>
 
-        {/* Time */}
-        <span className="text-xs text-slate-400 whitespace-nowrap">
+        <span className="shrink-0 text-xs text-slate-400 whitespace-nowrap">
           {timeAgo(post.createdAt)}
         </span>
       </div>
 
-      {/* Post Content */}
-      <p className="text-sm text-slate-700 leading-relaxed">
+      <p className="mt-4 text-base leading-relaxed text-slate-700">
         {post.content}
       </p>
 
-      {/* ⭐ POST IMAGE */}
       {post.image && (
-        <div className="mt-2 overflow-hidden rounded-xl border border-slate-200">
+        <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
           <img
             src={post.image}
             alt={`Work completed by ${technicianName}`}
-            className="w-full max-h-[500px] object-cover"
+            className="max-h-[420px] w-full object-cover"
           />
         </div>
       )}
 
-      {/* Rating */}
       {post.technician.rating !== undefined && (
-        <div className="text-xs text-slate-500">
-          ⭐ {post.technician.rating.toFixed(1)}
+        <div className="mt-4 flex items-center gap-1 text-sm text-slate-600">
+          <span>⭐</span>
+          <span>{post.technician.rating.toFixed(1)}</span>
         </div>
       )}
-
     </div>
   );
 }

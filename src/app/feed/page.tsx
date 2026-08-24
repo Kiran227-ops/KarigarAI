@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import FeedPostCard from '@/components/FeedPostCard';
 import { connectDB } from '@/lib/db';
 import Post from '@/lib/models/Post';
@@ -27,8 +29,28 @@ export default async function FeedPage() {
     profiles.map((p: any) => [p.userId, p])
   );
 
+  const solvedCountByTechnician = posts.reduce(
+    (acc: Record<string, number>, post: any) => {
+      const technicianId = String(post.technicianId);
+      acc[technicianId] = (acc[technicianId] || 0) + 1;
+      return acc;
+    },
+    {}
+  );
+
   return (
     <div className="flex flex-col gap-6 max-w-2xl mx-auto">
+
+      <div className="flex items-center gap-3">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+          aria-label="Go back to home"
+        >
+          <span aria-hidden="true">←</span>
+          <span>Back</span>
+        </Link>
+      </div>
 
       {/* Feed Header */}
       <div>
@@ -67,12 +89,14 @@ export default async function FeedPage() {
 
                 content: p.content,
 
-                // ⭐ IMPORTANT: pass image to FeedPostCard
                 image: p.image ?? null,
 
                 category: p.category,
 
                 createdAt: p.createdAt,
+
+                solvedCount:
+                  solvedCountByTechnician[String(p.technicianId)] || 0,
 
                 technician: {
                   id: p.technicianId,
