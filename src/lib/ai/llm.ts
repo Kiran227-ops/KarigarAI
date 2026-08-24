@@ -9,15 +9,15 @@ export interface ProblemUnderstanding {
 
 const token = process.env.HF_TOKEN;
 
-if (!token) {
-  throw new Error('HF_TOKEN is missing from environment variables');
-}
-
-const hf = new InferenceClient(token);
-
 const MODEL = 'Qwen/Qwen2.5-7B-Instruct-1M';
 
+const hf = token ? new InferenceClient(token) : null;
+
 async function askAI(prompt: string): Promise<string> {
+  if (!hf) {
+    throw new Error('HF_TOKEN is missing from environment variables');
+  }
+
   const response = await hf.chatCompletion({
     model: MODEL,
     messages: [
@@ -39,7 +39,9 @@ async function askAI(prompt: string): Promise<string> {
 export async function translateToEnglish(
   rawText: string
 ): Promise<string> {
-  if (!rawText.trim()) return rawText;
+  if (!rawText.trim()) {
+    return rawText;
+  }
 
   const prompt = `
 You are a translation assistant for a technician discovery application.
@@ -48,10 +50,12 @@ Translate the following customer problem into clear English.
 
 Rules:
 - If already English, return it unchanged.
+- If it is Telugu, Hindi, Tamil, Kannada, Malayalam, Marathi,
+  Bengali, or another language, translate it into English.
 - Preserve the exact meaning.
 - Do not add information.
 - Do not explain anything.
-- Return ONLY the translation.
+- Return ONLY the English translation.
 
 Customer problem:
 ${rawText}
@@ -63,6 +67,8 @@ ${rawText}
     return result || rawText;
   } catch (error) {
     console.error('Translation error:', error);
+
+    // If AI translation fails, continue with original text.
     return rawText;
   }
 }
@@ -77,7 +83,7 @@ export async function understandProblem(
   const prompt = `
 You are an AI assistant for a technician discovery application.
 
-Analyze this customer problem and return ONLY valid JSON.
+Analyze the customer's problem and return ONLY valid JSON.
 
 Required JSON format:
 
@@ -88,7 +94,7 @@ Required JSON format:
   "category": "service category"
 }
 
-Possible categories include:
+Possible categories:
 
 AC repair
 plumbing
@@ -107,11 +113,18 @@ cleaning
 general maintenance
 home & property maintenance
 
-Important:
-- If the problem is about creating/designing rangoli, classify it as "home & property maintenance" or "general maintenance".
+Important rules:
+
+- If the problem is about creating or designing rangoli,
+  classify it as "home & property maintenance".
 - Do not invent technical problems.
 - Keep symptoms short.
+- The problem should be a clean one-sentence description.
+- device can be empty if there is no device.
+- symptoms can be an empty array if there are no symptoms.
 - Return ONLY JSON.
+- Do NOT use markdown.
+- Do NOT wrap JSON in ```.
 
 Customer problem:
 ${rawText}
@@ -122,7 +135,7 @@ ${rawText}
 
     console.log('AI raw response:', content);
 
-    // Remove accidental markdown code fences
+    // Remove accidental markdown fences.
     const cleaned = content
       .replace(/```json/gi, '')
       .replace(/```/g, '')
@@ -131,17 +144,34 @@ ${rawText}
     const parsed = JSON.parse(cleaned);
 
     return {
-      problem: parsed.problem || rawText,
-      device: parsed.device || '',
-      symptoms: Array.isArray(parsed.symptoms)
-        ? parsed.symptoms
-        : [],
-      category: parsed.category || '',
+      problem:
+        typeof parsed.problem === 'string'
+          ? parsed.problem
+          : rawText,
+
+      device:
+        typeof parsed.device === 'string'
+          ? parsed.device
+          : '',
+
+      symptoms:
+        Array.isArray(parsed.symptoms)
+          ? parsed.symptoms.filter(
+              (item: unknown): item is string =>
+                typeof item === 'string'
+            )
+          : [],
+
+      category:
+        typeof parsed.category === 'string'
+          ? parsed.category
+          : '',
     };
 
   } catch (error) {
     console.error('Problem understanding error:', error);
 
+    // Don't break the whole search if AI fails.
     return {
       problem: rawText,
       device: '',
