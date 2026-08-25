@@ -24,7 +24,7 @@ export default function Navbar() {
     <header className="border-b border-slate-200 bg-white">
       <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="font-semibold text-lg text-slate-900">
-          Fix<span className="text-brand-600">Match</span>
+          Karigar<span className="text-brand-600">AI</span>
         </Link>
         <nav className="flex items-center gap-4 text-sm">
   <Link href="/feed" className="text-slate-600 hover:text-slate-900">

@@ -60,9 +60,17 @@ function SearchResultsContent() {
   }, [q]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div
+      className={
+        q
+          ? 'flex flex-col gap-6'
+          : 'flex min-h-[calc(100vh-8rem)] items-center justify-center'
+      }
+    >
       {/* Search Bar */}
-      <SearchBar initialValue={q} />
+      <div className="w-full">
+        <SearchBar initialValue={q} />
+      </div>
 
       {/* Loading */}
       {loading && (

@@ -14,6 +14,41 @@ const LANGUAGES = [
   { code: 'bn-IN', name: 'Bengali' },
 ];
 
+const INTRO_COPY: Record<string, { heading: string; subtitle: string }> = {
+  'en-IN': {
+    heading: 'What problem can we solve for you today?',
+    subtitle: "Describe your problem and we'll help you find the right technician.",
+  },
+  'te-IN': {
+    heading: 'ఈరోజు మీకు ఏ సమస్యను పరిష్కరించడంలో మేము సహాయం చేయగలము?',
+    subtitle: 'మీ సమస్యను వివరించండి, మీకు సరైన టెక్నీషియన్‌ను కనుగొనడంలో మేము సహాయం చేస్తాము.',
+  },
+  'hi-IN': {
+    heading: 'आज हम आपके लिए कौन सी समस्या हल कर सकते हैं?',
+    subtitle: 'अपनी समस्या बताएं और हम आपके लिए सही तकनीशियन खोजने में मदद करेंगे।',
+  },
+  'ta-IN': {
+    heading: 'இன்று உங்களுக்காக எந்தப் பிரச்சினையை நாங்கள் தீர்க்கலாம்?',
+    subtitle: 'உங்கள் பிரச்சினையை விவரிக்கவும், உங்களுக்கான சரியான தொழில்நுட்ப நிபுணரைக் கண்டறிய நாங்கள் உதவுகிறோம்.',
+  },
+  'kn-IN': {
+    heading: 'ಇಂದು ನಿಮಗಾಗಿ ನಾವು ಯಾವ ಸಮಸ್ಯೆಯನ್ನು ಪರಿಹರಿಸಬಹುದು?',
+    subtitle: 'ನಿಮ್ಮ ಸಮಸ್ಯೆಯನ್ನು ವಿವರಿಸಿ, ನಿಮಗೆ ಸರಿಯಾದ ತಂತ್ರಜ್ಞರನ್ನು ಹುಡುಕಲು ನಾವು ಸಹಾಯ ಮಾಡುತ್ತೇವೆ.',
+  },
+  'ml-IN': {
+    heading: 'ഇന്ന് നിങ്ങൾക്കായി ഞങ്ങൾക്ക് ഏത് പ്രശ്നമാണ് പരിഹരിക്കാൻ കഴിയുക?',
+    subtitle: 'നിങ്ങളുടെ പ്രശ്നം വിവരിക്കൂ, നിങ്ങൾക്ക് അനുയോജ്യമായ ടെക്നീഷ്യനെ കണ്ടെത്താൻ ഞങ്ങൾ സഹായിക്കും.',
+  },
+  'mr-IN': {
+    heading: 'आज आम्ही तुमच्यासाठी कोणती समस्या सोडवू शकतो?',
+    subtitle: 'तुमची समस्या सांगा आणि आम्ही तुमच्यासाठी योग्य तंत्रज्ञ शोधण्यात मदत करू.',
+  },
+  'bn-IN': {
+    heading: 'আজ আমরা আপনার জন্য কোন সমস্যার সমাধান করতে পারি?',
+    subtitle: 'আপনার সমস্যাটি বর্ণনা করুন এবং আমরা আপনার জন্য সঠিক প্রযুক্তিবিদ খুঁজে পেতে সাহায্য করব।',
+  },
+};
+
 export default function SearchBar({
   initialValue = '',
 }: {
@@ -25,6 +60,7 @@ export default function SearchBar({
   const [error, setError] = useState('');
 
   const router = useRouter();
+  const introCopy = INTRO_COPY[language] || INTRO_COPY['en-IN'];
 
   function startVoiceInput() {
     setError('');
@@ -123,7 +159,15 @@ export default function SearchBar({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3">
+    <div className="text-center">
+      <div className="mb-5">
+        <h1 className="text-2xl font-semibold text-slate-900">
+          {introCopy.heading}
+        </h1>
+        <p className="mt-2 text-sm text-slate-500">{introCopy.subtitle}</p>
+      </div>
+
+      <form onSubmit={submit} className="mx-auto flex max-w-4xl flex-col gap-3 text-left">
 
       <div className="flex flex-col sm:flex-row gap-3">
 
@@ -198,6 +242,7 @@ export default function SearchBar({
         Select your language and use the microphone to describe your problem.
       </p>
 
-    </form>
+      </form>
+    </div>
   );
 }
