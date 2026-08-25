@@ -86,8 +86,12 @@ function detectIntent(text: string): string {
   // Drip irrigation
   if (
     t.includes('drip irrigation') ||
+    (t.includes('drip') && t.includes('irrigation')) ||
     t.includes('irrigation pipe') ||
-    t.includes('drip system')
+    t.includes('drip system') ||
+    t.includes('డ్రిప్') ||
+    t.includes('ఇరిగేషన్') ||
+    t.includes('నీటిపారుదల')
   ) {
     return 'drip irrigation';
   }
@@ -339,9 +343,9 @@ export async function POST(req: NextRequest) {
     // =================================================
 
     const matches = await queryTopMatches(
-  embedding,
-  5
-);
+      embedding,
+      20
+    );
 
 
     if (matches.length === 0) {
@@ -395,7 +399,7 @@ export async function POST(req: NextRequest) {
 // 8. Create candidates
 // =====================================================
 
-const candidates = matches
+let candidates = matches
   .map((m, originalIndex) => {
     const post = postById.get(m.postId);
 
@@ -422,6 +426,14 @@ const candidates = matches
     };
   })
   .filter(Boolean) as any[];
+
+// Keep specific service searches from returning semantically similar but
+// unrelated work, such as rangoli or painting for an irrigation query.
+if (intent) {
+  candidates = candidates.filter((candidate) =>
+    matchesIntent(candidate.post, intent)
+  );
+}
 
 
 // =====================================================
